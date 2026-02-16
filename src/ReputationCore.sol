@@ -22,11 +22,7 @@ contract ReputationCore is ReputationStorage, Ownable {
     event MintPassport(address indexed user, uint256 tokenId);
 
     /// @notice Emitted when a contribution is added
-    event ContributionAdded(
-        address indexed user,
-        uint256 tokenId,
-        uint256 totalContributions
-    );
+    event ContributionAdded(address indexed user, uint256 tokenId, uint256 totalContributions);
 
     /// @notice Emitted when a token is validated by a Gold
     event validatedByGold(address indexed validator, uint256 tokenId);
@@ -55,10 +51,7 @@ contract ReputationCore is ReputationStorage, Ownable {
 
     /// @notice Deploys the contract and mints the first Gold token to the deployer
     /// @dev currentTokenId starts at 1 for the first Gold
-    constructor()
-        ReputationStorage("Reputation Passport", "RPASS")
-        Ownable(msg.sender)
-    {
+    constructor() ReputationStorage("Reputation Passport", "RPASS") Ownable(msg.sender) {
         currentTokenId = 1;
         _mint(msg.sender, currentTokenId);
         profiles[currentTokenId] = Profile(Level.GOLD, 0, true);
@@ -85,18 +78,15 @@ contract ReputationCore is ReputationStorage, Ownable {
         if (tokenId == 0) revert NoNFT();
 
         profiles[tokenId].contributions++;
-        emit ContributionAdded(
-            msg.sender,
-            tokenId,
-            profiles[tokenId].contributions
-        );
+        emit ContributionAdded(msg.sender, tokenId, profiles[tokenId].contributions);
     }
 
     /// @notice Validate another user's level (only Gold)
     /// @param tokenIdToValidate Token ID of the user being validated
     function validateLevel(uint256 tokenIdToValidate) external onlyGold {
-        if (tokenIdToValidate == 0 || tokenIdToValidate > currentTokenId)
+        if (tokenIdToValidate == 0 || tokenIdToValidate > currentTokenId) {
             revert InvalidToken();
+        }
 
         profiles[tokenIdToValidate].validatedByGold = true;
         emit validatedByGold(msg.sender, tokenIdToValidate);
@@ -110,14 +100,16 @@ contract ReputationCore is ReputationStorage, Ownable {
         Profile storage profile = profiles[tokenId];
 
         if (profile.level == Level.BRONZE) {
-            if (profile.contributions < bronzeToSilver)
+            if (profile.contributions < bronzeToSilver) {
                 revert InsufficientContributions(profile.contributions);
+            }
             if (!profile.validatedByGold) revert ValidationRequired();
             profile.level = Level.SILVER;
             emit LevelUpgraded(tokenId, Level.SILVER);
         } else if (profile.level == Level.SILVER) {
-            if (profile.contributions < silverToGold)
+            if (profile.contributions < silverToGold) {
                 revert InsufficientContributions(profile.contributions);
+            }
             if (!profile.validatedByGold) revert ValidationRequired();
             profile.level = Level.GOLD;
             emit LevelUpgraded(tokenId, Level.GOLD);
@@ -126,10 +118,7 @@ contract ReputationCore is ReputationStorage, Ownable {
 
     /// @notice Updates contribution thresholds for level upgrades
     /// @dev Only callable by contract owner
-    function setThresholds(
-        uint256 _bronze,
-        uint256 _silver
-    ) external onlyOwner {
+    function setThresholds(uint256 _bronze, uint256 _silver) external onlyOwner {
         if (_bronze == 0 || _silver <= _bronze) revert InvalidThreshold();
         bronzeToSilver = _bronze;
         silverToGold = _silver;
@@ -140,35 +129,33 @@ contract ReputationCore is ReputationStorage, Ownable {
     /// @notice Returns on-chain metadata JSON for a token
     /// @param tokenId The token ID to query
     /// @return JSON string representing metadata
-    function tokenURI(
-        uint256 tokenId
-    ) public view override returns (string memory) {
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
 
         Profile memory profile = profiles[tokenId];
-        string memory levelStr = profile.level == Level.BRONZE
-            ? "Bronze"
-            : profile.level == Level.SILVER
-            ? "Silver"
-            : "Gold";
+        string memory levelStr =
+            profile.level == Level.BRONZE ? "Bronze" : profile.level == Level.SILVER ? "Silver" : "Gold";
 
-        return
-            string(
-                abi.encodePacked(
-                    '{"name":"Reputation Passport #',
-                    tokenId.toString(),
-                    '","description":"Non-transferable on-chain identity primitive",',
-                    '"attributes":[{"trait_type":"Level","value":"',
-                    levelStr,
-                    '"},{"trait_type":"Contributions","value":"',
-                    profile.contributions.toString(),
-                    '"}]}'
-                )
-            );
+        return string(
+            abi.encodePacked(
+                '{"name":"Reputation Passport #',
+                tokenId.toString(),
+                '","description":"Non-transferable on-chain identity primitive",',
+                '"attributes":[{"trait_type":"Level","value":"',
+                levelStr,
+                '"},{"trait_type":"Contributions","value":"',
+                profile.contributions.toString(),
+                '"}]}'
+            )
+        );
     }
 
     /// @dev Prevent NFT transfers (soulbound)
-    function _transfer(address, address, uint256) internal pure override {
-        revert("Soulbound: cannot transfer");
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
+        if (from != address(0) && to != address(0)) {
+            revert("Soulbound: cannot transfer");
+        }
+        return super._update(to, tokenId, auth);
     }
 }

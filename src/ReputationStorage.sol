@@ -35,8 +35,5 @@ contract ReputationStorage is ERC721 {
     /// @notice Constructor to set token name and symbol
     /// @param name_ Name of the ERC-721 token
     /// @param symbol_ Symbol of the ERC-721 token
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC721(name_, symbol_) {}
+    constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
 }
